@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CogniAssess — Learner Login</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div class="page">
+  <div class="card">
+    <div class="logo">
+      <div class="logo-icon">🧠</div>
+      <span>CogniAssess</span>
+    </div>
+
+    <h1 class="mb-1">Learner Registration</h1>
+    <p class="text-muted mb-3">Fill in your details to begin the aptitude assessment.</p>
+
+    <form id="loginForm" novalidate>
+
+      <div class="form-group">
+        <label for="fullName">Full Name <span style="color:var(--danger)">*</span></label>
+        <input type="text" id="fullName" placeholder="Enter your full name" autocomplete="name" />
+        <div class="field-error" id="err-fullName">Please enter your full name.</div>
+      </div>
+
+      <div class="form-group">
+        <label for="email">Email Address <span style="color:var(--danger)">*</span></label>
+        <input type="email" id="email" placeholder="you@example.com" autocomplete="email" />
+        <div class="field-error" id="err-email">Please enter a valid email address.</div>
+      </div>
+
+      <div class="form-group">
+        <label for="mobile">Mobile Number <span style="color:var(--danger)">*</span></label>
+        <input type="tel" id="mobile" placeholder="10-digit mobile number" autocomplete="tel" maxlength="15" />
+        <div class="field-error" id="err-mobile">Please enter a valid mobile number (10 digits).</div>
+      </div>
+
+      <div class="form-group">
+        <label for="batch">Batch / College / Program <span style="color:var(--danger)">*</span></label>
+        <input type="text" id="batch" placeholder="e.g. B.Tech 2025 – ABC College" />
+        <div class="field-error" id="err-batch">Please enter your batch or college name.</div>
+      </div>
+
+      <div class="alert alert-info mb-2">
+        <strong>Note:</strong> This is a game-based cognitive assessment. Ensure you are in a quiet place with a stable internet connection before starting.
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-full" id="startBtn">
+        Continue to Instructions →
+      </button>
+    </form>
+  </div>
+
+  <p class="text-muted mt-2" style="font-size:.8rem;">
+    © 2025 CogniAssess — Powered by Vanilla JS
+  </p>
+</div>
+
+<script src="storage.js"></script>
+<script>
+  /* ---- Check if an active session already exists ---- */
+  (function checkExistingSession() {
+    const state = Storage.getAssessmentState();
+    const info  = Storage.getLearnerInfo();
+    if (state && info && !state.completed) {
+      const startedAt = new Date(state.startTime);
+      const elapsed   = Math.floor((Date.now() - startedAt) / 1000);
+      const totalSec  = 25 * 60; // 25 minutes
+      if (elapsed < totalSec) {
+        if (confirm(
+          `Welcome back, ${info.name}!\n` +
+          `You have an active assessment session with ${Math.floor((totalSec - elapsed) / 60)} min remaining.\n\n` +
+          `Resume your assessment?`
+        )) {
+          window.location.href = 'assessment.html';
+        }
+      }
+    }
+  })();
+
+  /* ---- Form validation ---- */
+  const form    = document.getElementById('loginForm');
+  const nameEl  = document.getElementById('fullName');
+  const emailEl = document.getElementById('email');
+  const mobEl   = document.getElementById('mobile');
+  const batchEl = document.getElementById('batch');
+
+  function showError(id, show) {
+    const el = document.getElementById('err-' + id);
+    if (show) el.classList.add('show');
+    else       el.classList.remove('show');
+  }
+  function clearErrors() {
+    ['fullName','email','mobile','batch'].forEach(id => showError(id, false));
+    [nameEl, emailEl, mobEl, batchEl].forEach(el => el.classList.remove('error'));
+  }
+
+  function validate() {
+    clearErrors();
+    let ok = true;
+    const name  = nameEl.value.trim();
+    const email = emailEl.value.trim();
+    const mob   = mobEl.value.trim().replace(/\s+/g,'');
+    const batch = batchEl.value.trim();
+
+    if (!name || name.length < 2) {
+      showError('fullName', true); nameEl.classList.add('error'); ok = false;
+    }
+    const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRe.test(email)) {
+      showError('email', true); emailEl.classList.add('error'); ok = false;
+    }
+    const mobDigits = mob.replace(/[^0-9]/g,'');
+    if (mobDigits.length < 10) {
+      showError('mobile', true); mobEl.classList.add('error'); ok = false;
+    }
+    if (!batch || batch.length < 2) {
+      showError('batch', true); batchEl.classList.add('error'); ok = false;
+    }
+    return ok;
+  }
+
+  form.addEventListener('submit', function(e) {
+    e.preventDefault();
+    if (!validate()) return;
+
+    const attemptId = 'ATT-' + Date.now() + '-' + Math.random().toString(36).substr(2,6).toUpperCase();
+    const learnerInfo = {
+      name:      nameEl.value.trim(),
+      email:     emailEl.value.trim().toLowerCase(),
+      mobile:    mobEl.value.trim(),
+      batch:     batchEl.value.trim(),
+      attemptId: attemptId
+    };
+
+    Storage.setLearnerInfo(learnerInfo);
+    window.location.href = 'instructions.html';
+  });
+
+  /* Live validation hints */
+  [nameEl, emailEl, mobEl, batchEl].forEach(el => {
+    el.addEventListener('input', () => {
+      el.classList.remove('error');
+    });
+  });
+</script>
+</body>
+</html>

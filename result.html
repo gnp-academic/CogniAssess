@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CogniAssess — Your Results</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div class="page">
+
+  <!-- ===== Loading state =================================== -->
+  <div class="card" id="loadingCard">
+    <div class="submit-status">
+      <div class="spinner"></div>
+      <h2>Calculating Results…</h2>
+      <p class="text-muted">Please wait while we process your assessment.</p>
+    </div>
+  </div>
+
+  <!-- ===== Result card (hidden until ready) ================ -->
+  <div class="card card-wide hidden" id="resultCard">
+
+    <div class="result-header">
+      <div class="logo" style="justify-content:center">
+        <div class="logo-icon">🧠</div><span>CogniAssess</span>
+      </div>
+      <h1 id="resultHeading">Assessment Complete!</h1>
+      <p class="text-muted" id="learnerNameDisplay"></p>
+
+      <!-- Score circle -->
+      <div class="result-score-circle" id="scoreCircle" style="--pct:0">
+        <div class="result-score-inner">
+          <div class="result-score-pct" id="pctDisplay">0%</div>
+          <div class="result-score-label">SCORE</div>
+        </div>
+      </div>
+
+      <div id="perfBadge" class="performance-badge"></div>
+      <p class="text-muted mt-1" id="scoreRaw"></p>
+    </div>
+
+    <!-- ===== Skill breakdown ================================ -->
+    <div class="mt-3 mb-1">
+      <h3>Skill-wise Performance</h3>
+    </div>
+    <div id="skillBars" class="mb-3"></div>
+
+    <!-- ===== Game-wise table ================================ -->
+    <div class="mb-1">
+      <h3>Game-wise Scores</h3>
+    </div>
+    <div class="admin-table-wrap mb-3">
+      <table class="game-score-table">
+        <thead>
+          <tr><th>Game</th><th>Skill</th><th>Score</th><th>Status</th></tr>
+        </thead>
+        <tbody id="gameScoreRows"></tbody>
+      </table>
+    </div>
+
+    <!-- ===== Interaction stats ============================== -->
+    <div class="mb-1"><h3>Interaction Summary</h3></div>
+    <div id="interactionStats" class="mb-3"
+         style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.6rem"></div>
+
+    <!-- ===== Submit status ================================== -->
+    <div id="submitArea"></div>
+
+    <div class="text-center mt-3">
+      <a href="index.html" class="btn btn-ghost">Take Another Assessment</a>
+    </div>
+  </div>
+
+</div>
+
+<script src="storage.js"></script>
+<script>
+  /* ---- Load result from localStorage --------------------- */
+  const result  = Storage.getResult();
+  const learner = Storage.getLearnerInfo();
+
+  if (!result || !learner) {
+    document.getElementById('loadingCard').innerHTML = `
+      <div class="submit-status">
+        <div class="status-icon">⚠️</div>
+        <h2>No Result Found</h2>
+        <p class="text-muted">Could not find assessment data. Please start a new session.</p>
+        <a href="index.html" class="btn btn-primary mt-2">Go to Start</a>
+      </div>`;
+  } else {
+    setTimeout(() => renderResult(result), 800); // brief loading feel
+  }
+
+  function renderResult(r) {
+    document.getElementById('loadingCard').classList.add('hidden');
+    const rc = document.getElementById('resultCard');
+    rc.classList.remove('hidden');
+
+    /* Heading */
+    document.getElementById('learnerNameDisplay').textContent =
+      `${r.name}  ·  ${r.batch}  ·  Attempt: ${r.attemptId}`;
+
+    /* Score circle */
+    const pct = r.percentage || 0;
+    document.getElementById('scoreCircle').style.setProperty('--pct', pct);
+    animateCounter('pctDisplay', pct, '%', 1200);
+    document.getElementById('scoreRaw').textContent =
+      `${r.totalScore} / ${r.maxScore} points  ·  Time: ${r.totalTimeMin} min`;
+
+    /* Performance badge */
+    const badge = document.getElementById('perfBadge');
+    badge.textContent = r.performanceLevel;
+    badge.className   = 'performance-badge ' +
+      (r.performanceLevel === 'Strong' ? 'perf-strong' :
+       r.performanceLevel === 'Good'   ? 'perf-good'   :
+       r.performanceLevel === 'Basic'  ? 'perf-basic'  : 'perf-needs');
+
+    /* Skill bars */
+    const skills = [
+      { label: 'Pattern Recog.',  val: r.skillPatternRecog },
+      { label: 'Memory',          val: r.skillMemory        },
+      { label: 'Attention',       val: r.skillAttention     },
+      { label: 'Logical Reason.', val: r.skillLogical       },
+      { label: 'Spatial Reason.', val: r.skillSpatial       },
+      { label: 'Reaction Speed',  val: r.skillReaction      },
+      { label: 'Numerical Abil.', val: r.skillNumerical     },
+      { label: 'Decision Making', val: r.skillDecision      }
+    ];
+    const sbEl = document.getElementById('skillBars');
+    skills.forEach(s => {
+      const pct = Math.min(100, s.val || 0);
+      sbEl.insertAdjacentHTML('beforeend', `
+        <div class="skill-bar-row">
+          <div class="skill-bar-label">${s.label}</div>
+          <div class="skill-bar-track">
+            <div class="skill-bar-fill" style="width:0%" data-target="${pct}"></div>
+          </div>
+          <div class="skill-bar-val">${pct}</div>
+        </div>`);
+    });
+    /* Animate bars */
+    setTimeout(() => {
+      document.querySelectorAll('.skill-bar-fill').forEach(el => {
+        el.style.width = el.dataset.target + '%';
+      });
+    }, 400);
+
+    /* Game-wise table */
+    const gameDefs = [
+      { id:'scorePatternMatch',  name:'Pattern Match',    skill:'Pattern Recog.' },
+      { id:'scoreBlockArrange',  name:'Block Arrangement',skill:'Logical Seq.'   },
+      { id:'scoreMemory',        name:'Memory Sequence',  skill:'Working Memory' },
+      { id:'scoreReaction',      name:'Quick Reaction',   skill:'Attention'      },
+      { id:'scoreRuleSwitching', name:'Rule Switching',   skill:'Flexibility'    },
+      { id:'scorePuzzleGrid',    name:'Puzzle Grid',      skill:'Spatial Reason.'},
+      { id:'scoreDirection',     name:'Direction Quest',  skill:'Spatial'        },
+      { id:'scoreCalcSprint',    name:'Calculation Sprint',skill:'Numerical'     }
+    ];
+    const tbody = document.getElementById('gameScoreRows');
+    gameDefs.forEach(g => {
+      const sc = r[g.id] || 0;
+      const pct = sc;
+      const color = pct >= 80 ? '#10b981' : pct >= 60 ? '#3b82f6' : pct >= 40 ? '#f59e0b' : '#ef4444';
+      tbody.insertAdjacentHTML('beforeend', `
+        <tr>
+          <td><strong>${g.name}</strong></td>
+          <td style="color:var(--grey)">${g.skill}</td>
+          <td><span style="font-weight:700;color:${color}">${sc}</span><span style="color:var(--grey)">/100</span></td>
+          <td>${sc >= 60 ? '✅' : sc >= 30 ? '⚠️' : '❌'}</td>
+        </tr>`);
+    });
+
+    /* Interaction summary */
+    const stats = [
+      { icon:'✅', label:'Correct',       val: r.totalCorrect    },
+      { icon:'❌', label:'Wrong',         val: r.totalWrong      },
+      { icon:'⏭', label:'Missed',        val: r.totalMissed     },
+      { icon:'⚡', label:'Avg Speed (ms)',val: r.avgResponseTimeMs},
+      { icon:'🔀', label:'Tab Switches',  val: r.tabSwitchCount  },
+      { icon:'✔️', label:'Completion',    val: r.completionPct+'%'}
+    ];
+    const statsEl = document.getElementById('interactionStats');
+    stats.forEach(s => {
+      statsEl.insertAdjacentHTML('beforeend', `
+        <div style="background:var(--light);border-radius:var(--radius-sm);padding:.75rem;text-align:center">
+          <div style="font-size:1.4rem">${s.icon}</div>
+          <div style="font-weight:700;font-size:1.1rem">${s.val ?? 0}</div>
+          <div style="font-size:.78rem;color:var(--grey)">${s.label}</div>
+        </div>`);
+    });
+
+    /* Submit */
+    submitResult(r);
+  }
+
+  /* ---- Submit to backend ---------------------------------- */
+  async function submitResult(payload) {
+    const area = document.getElementById('submitArea');
+    area.innerHTML = `
+      <div class="submit-status">
+        <div class="spinner"></div>
+        <p class="text-muted">Submitting your results…</p>
+      </div>`;
+
+    if (Storage.isAlreadySubmitted(payload.attemptId)) {
+      area.innerHTML = `<div class="alert alert-success">✅ Results already submitted successfully.</div>`;
+      return;
+    }
+
+    const res = await Storage.submitResult(payload);
+
+    if (res.success) {
+      area.innerHTML = `
+        <div class="alert alert-success">
+          ✅ <strong>Results submitted successfully!</strong>
+          ${res.dev ? '<br><em>(Dev mode — no backend configured yet)</em>' : ''}
+        </div>`;
+    } else if (res.error === 'duplicate') {
+      area.innerHTML = `<div class="alert alert-info">ℹ️ This attempt was already submitted.</div>`;
+    } else {
+      const pending = Storage.getPendingSubmission();
+      area.innerHTML = `
+        <div class="alert alert-danger">
+          ⚠️ <strong>Submission failed.</strong> ${res.message || ''}
+          Your results are saved locally.
+        </div>
+        <button id="retryBtn" class="btn btn-warning btn-full mt-1">🔄 Retry Submission</button>`;
+      document.getElementById('retryBtn').addEventListener('click', async () => {
+        document.getElementById('retryBtn').disabled = true;
+        document.getElementById('retryBtn').textContent = 'Retrying…';
+        await submitResult(pending || payload);
+      });
+    }
+  }
+
+  /* ---- Counter animation ---------------------------------- */
+  function animateCounter(id, target, suffix, duration) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const start = Date.now();
+    const tick = () => {
+      const progress = Math.min(1, (Date.now() - start) / duration);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      el.textContent = Math.round(eased * target) + (suffix || '');
+      if (progress < 1) requestAnimationFrame(tick);
+    };
+    tick();
+  }
+</script>
+</body>
+</html>

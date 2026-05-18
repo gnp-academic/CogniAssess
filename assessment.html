@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CogniAssess — Assessment</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body style="background:var(--light);padding:0">
+
+<!-- ===== Sticky Assessment Header ========================= -->
+<div class="assessment-header" id="assessHeader">
+  <div class="flex gap-2">
+    <div class="logo-icon" style="width:32px;height:32px;font-size:.9rem">🧠</div>
+    <div>
+      <div style="font-weight:700;font-size:.9rem" id="levelLabel">Level 1</div>
+      <div style="font-size:.75rem;color:var(--grey)" id="gameLabel">Pattern Match</div>
+    </div>
+  </div>
+
+  <div style="flex:1;max-width:200px">
+    <div class="progress-bar-wrap" style="margin:0">
+      <div class="progress-bar-fill" id="globalProgress" style="width:0%"></div>
+    </div>
+    <div style="font-size:.72rem;color:var(--grey);text-align:center;margin-top:2px">
+      <span id="progressText">0 / 8 games</span>
+    </div>
+  </div>
+
+  <div class="flex gap-2">
+    <div class="score-badge" id="scoreBadge">⭐ 0 pts</div>
+    <div class="timer-display" id="globalTimer">⏱ 25:00</div>
+  </div>
+</div>
+
+<!-- ===== Per-game Timer Bar ================================ -->
+<div style="background:white;padding:.4rem 1.25rem;border-bottom:1px solid var(--border);">
+  <div class="game-timer-bar">
+    <span style="font-size:.85rem;font-weight:600;color:var(--grey)">Game time:</span>
+    <div class="progress-bar-wrap" style="flex:1;margin:0 .75rem">
+      <div class="progress-bar-fill" id="gameTimerBar" style="width:100%;background:linear-gradient(90deg,#10b981,#3b82f6)"></div>
+    </div>
+    <span class="game-timer-countdown" id="gameTimerLabel">--</span>
+  </div>
+</div>
+
+<!-- ===== Game Content Area ================================= -->
+<div style="padding:1rem;max-width:800px;margin:0 auto">
+  <div class="game-card" id="gameIntroCard">
+    <!-- Intro card shown before each game -->
+  </div>
+  <div id="gameContent" class="hidden">
+    <!-- Active game renders here -->
+  </div>
+</div>
+
+<!-- ===== Transition Overlay ================================ -->
+<div class="transition-overlay hidden" id="transitionOverlay">
+  <div style="font-size:3rem" id="transIcon">🎉</div>
+  <h2 id="transTitle">Game Complete!</h2>
+  <div class="transition-score" id="transScore">+85</div>
+  <p id="transMsg">Nice work! Get ready for the next challenge.</p>
+  <button id="transNextBtn" class="btn btn-primary mt-2">Next Game →</button>
+</div>
+
+<script src="storage.js"></script>
+<script src="games.js"></script>
+<script src="script.js"></script>
+</body>
+</html>

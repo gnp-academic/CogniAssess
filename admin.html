@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CogniAssess — Admin Panel</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div class="page" style="align-items:stretch;max-width:1200px;margin:0 auto;padding:1rem">
+
+  <div class="flex justify-between mb-3" style="flex-wrap:wrap;gap:.75rem">
+    <div class="logo">
+      <div class="logo-icon">🧠</div>
+      <span>CogniAssess — Admin</span>
+    </div>
+    <div class="flex gap-2">
+      <button class="btn btn-ghost" onclick="loadFromLocalStorage()">🔄 Refresh</button>
+      <button class="btn btn-primary" onclick="exportCSV()">⬇ Export CSV</button>
+    </div>
+  </div>
+
+  <div class="alert alert-info mb-3">
+    <strong>Production Admin View:</strong> In production, results are stored in Google Sheets.
+    Open your Google Sheet directly to view, filter, and sort all submissions.
+    This page shows results stored locally on <em>this device</em> (useful for testing).
+    <br><br>
+    <strong>Google Sheet URL:</strong>
+    <a id="sheetLink" href="#" target="_blank" style="color:var(--primary)">Configure your Sheet URL in the code below</a>
+  </div>
+
+  <!-- Filter bar -->
+  <div class="card mb-3" style="padding:1rem">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.75rem">
+      <div>
+        <label style="font-size:.85rem;font-weight:600;display:block;margin-bottom:.3rem">Search Name / Email</label>
+        <input type="text" id="filterSearch" placeholder="Type to filter…" class="form-group" style="width:100%;padding:.5rem .75rem;border:2px solid var(--border);border-radius:var(--radius-sm);font-family:var(--font)">
+      </div>
+      <div>
+        <label style="font-size:.85rem;font-weight:600;display:block;margin-bottom:.3rem">Min Score %</label>
+        <input type="number" id="filterMinScore" placeholder="e.g. 60" min="0" max="100" style="width:100%;padding:.5rem .75rem;border:2px solid var(--border);border-radius:var(--radius-sm);font-family:var(--font)">
+      </div>
+      <div>
+        <label style="font-size:.85rem;font-weight:600;display:block;margin-bottom:.3rem">Performance Level</label>
+        <select id="filterLevel" style="width:100%;padding:.5rem .75rem;border:2px solid var(--border);border-radius:var(--radius-sm);font-family:var(--font)">
+          <option value="">All Levels</option>
+          <option>Strong</option>
+          <option>Good</option>
+          <option>Basic</option>
+          <option>Needs Improvement</option>
+        </select>
+      </div>
+      <div style="display:flex;align-items:flex-end">
+        <button class="btn btn-primary w-full" onclick="applyFilters()">Apply Filters</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Summary cards -->
+  <div id="summaryCards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:.75rem;margin-bottom:1.25rem"></div>
+
+  <!-- Results table -->
+  <div class="card card-full" style="padding:1rem">
+    <div class="flex justify-between mb-2">
+      <h3>Submission Records</h3>
+      <span class="text-muted" id="recordCount">0 records</span>
+    </div>
+    <div class="admin-table-wrap">
+      <table class="admin-table" id="adminTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Batch</th>
+            <th>Score %</th>
+            <th>Level</th>
+            <th>Total Score</th>
+            <th>Time (min)</th>
+            <th>Pattern</th>
+            <th>Block</th>
+            <th>Memory</th>
+            <th>Reaction</th>
+            <th>Rules</th>
+            <th>Grid</th>
+            <th>Direction</th>
+            <th>Calc</th>
+            <th>Tab Switches</th>
+            <th>Attempt ID</th>
+            <th>Submitted</th>
+          </tr>
+        </thead>
+        <tbody id="adminTableBody">
+          <tr><td colspan="19" style="text-align:center;padding:2rem;color:var(--grey)">No records found on this device.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Google Sheets instructions -->
+  <div class="card mt-3">
+    <h3 class="mb-2">🗄 Setting Up Google Sheets as Admin Dashboard</h3>
+    <p class="text-muted mb-2">For production use, all 50+ learner results are stored in Google Sheets. Follow these steps:</p>
+    <ol style="padding-left:1.5rem;line-height:2">
+      <li>Create a new Google Sheet named <strong>CogniAssess Results</strong></li>
+      <li>Open <strong>Extensions → Apps Script</strong></li>
+      <li>Paste the code from <code>apps-script-code.gs</code> into the editor</li>
+      <li>Click <strong>Deploy → New Deployment → Web App</strong></li>
+      <li>Set <em>Execute as</em>: <strong>Me</strong> and <em>Who has access</em>: <strong>Anyone</strong></li>
+      <li>Copy the Web App URL and paste it into <code>storage.js</code> → <code>WEB_APP_URL</code></li>
+      <li>In Google Sheets, use <strong>Filter Views</strong> to filter by Batch, Score, or Level</li>
+      <li>Use <strong>Freeze Row 1</strong> so headers stay visible while scrolling</li>
+    </ol>
+    <div class="alert alert-warning mt-2">
+      <strong>Concurrency Note:</strong> Google Apps Script handles ~30–50 concurrent submissions reliably using LockService. For 100+ simultaneous users, migrate to Firebase Firestore or Supabase for better throughput.
+    </div>
+  </div>
+
+</div>
+
+<script src="storage.js"></script>
+<script>
+  let allRecords = [];
+  let filtered   = [];
+
+  /* ---- Load from localStorage (test/dev mode) ------------ */
+  function loadFromLocalStorage() {
+    allRecords = [];
+
+    /* Collect all stored results across tabs (same origin) */
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key === 'cga_result') {
+        try {
+          const r = JSON.parse(localStorage.getItem(key));
+          if (r && r.attemptId) allRecords.push(r);
+        } catch {}
+      }
+    }
+
+    /* Also check pending */
+    const pending = Storage.getPendingSubmission();
+    if (pending && pending.attemptId) {
+      if (!allRecords.find(r => r.attemptId === pending.attemptId)) {
+        allRecords.push({ ...pending, _pending: true });
+      }
+    }
+
+    filtered = [...allRecords];
+    renderSummary();
+    renderTable(filtered);
+  }
+
+  function applyFilters() {
+    const search   = document.getElementById('filterSearch').value.toLowerCase();
+    const minScore = parseInt(document.getElementById('filterMinScore').value) || 0;
+    const level    = document.getElementById('filterLevel').value;
+
+    filtered = allRecords.filter(r => {
+      const matchSearch = !search ||
+        (r.name  || '').toLowerCase().includes(search) ||
+        (r.email || '').toLowerCase().includes(search) ||
+        (r.batch || '').toLowerCase().includes(search);
+      const matchScore = (r.percentage || 0) >= minScore;
+      const matchLevel = !level || r.performanceLevel === level;
+      return matchSearch && matchScore && matchLevel;
+    });
+    renderTable(filtered);
+  }
+
+  function renderSummary() {
+    const total  = allRecords.length;
+    const avgPct = total ? Math.round(allRecords.reduce((s,r) => s+(r.percentage||0), 0) / total) : 0;
+    const strong = allRecords.filter(r => r.performanceLevel === 'Strong').length;
+    const pend   = allRecords.filter(r => r._pending).length;
+
+    const cards = [
+      { icon:'👥', label:'Total Submissions', val: total },
+      { icon:'📊', label:'Avg Score %',       val: avgPct + '%' },
+      { icon:'🏆', label:'Strong Performers', val: strong },
+      { icon:'⏳', label:'Pending Retry',      val: pend }
+    ];
+
+    const el = document.getElementById('summaryCards');
+    el.innerHTML = cards.map(c => `
+      <div style="background:white;border-radius:var(--radius-sm);padding:1rem;text-align:center;box-shadow:var(--shadow)">
+        <div style="font-size:1.6rem">${c.icon}</div>
+        <div style="font-weight:700;font-size:1.4rem">${c.val}</div>
+        <div style="font-size:.8rem;color:var(--grey)">${c.label}</div>
+      </div>`).join('');
+  }
+
+  function renderTable(records) {
+    document.getElementById('recordCount').textContent = `${records.length} record${records.length!==1?'s':''}`;
+    const tbody = document.getElementById('adminTableBody');
+    if (!records.length) {
+      tbody.innerHTML = `<tr><td colspan="19" style="text-align:center;padding:2rem;color:var(--grey)">No records match your filters.</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = records.map((r, i) => {
+      const color = r.percentage >= 81 ? '#10b981' : r.percentage >= 61 ? '#3b82f6' : r.percentage >= 41 ? '#f59e0b' : '#ef4444';
+      const ts = r.timestamp ? new Date(r.timestamp).toLocaleString() : '—';
+      return `<tr ${r._pending ? 'style="background:#fef3c7"' : ''}>
+        <td>${i+1}${r._pending?' ⏳':''}</td>
+        <td><strong>${esc(r.name)}</strong></td>
+        <td>${esc(r.email)}</td>
+        <td>${esc(r.batch)}</td>
+        <td style="font-weight:700;color:${color}">${r.percentage}%</td>
+        <td>${r.performanceLevel}</td>
+        <td>${r.totalScore}/${r.maxScore}</td>
+        <td>${r.totalTimeMin}</td>
+        <td>${r.scorePatternMatch||0}</td>
+        <td>${r.scoreBlockArrange||0}</td>
+        <td>${r.scoreMemory||0}</td>
+        <td>${r.scoreReaction||0}</td>
+        <td>${r.scoreRuleSwitching||0}</td>
+        <td>${r.scorePuzzleGrid||0}</td>
+        <td>${r.scoreDirection||0}</td>
+        <td>${r.scoreCalcSprint||0}</td>
+        <td style="text-align:center">${r.tabSwitchCount||0}</td>
+        <td style="font-size:.75rem;color:var(--grey)">${r.attemptId}</td>
+        <td style="font-size:.78rem">${ts}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  function esc(s) {
+    return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  /* ---- CSV Export ---------------------------------------- */
+  function exportCSV() {
+    if (!filtered.length) { alert('No records to export.'); return; }
+    const headers = ['#','Name','Email','Mobile','Batch','Score%','Level','Total','MaxScore','Time(min)',
+      'Pattern','Block','Memory','Reaction','Rules','Grid','Direction','Calc',
+      'SkillPattern','SkillMemory','SkillAttention','SkillLogical','SkillSpatial','SkillReaction','SkillNumerical','SkillDecision',
+      'Correct','Wrong','Missed','AvgRT','TabSwitches','AutoSubmit','AttemptID','Timestamp'];
+    const rows = filtered.map((r,i) => [
+      i+1, r.name, r.email, r.mobile, r.batch, r.percentage, r.performanceLevel, r.totalScore, r.maxScore, r.totalTimeMin,
+      r.scorePatternMatch||0, r.scoreBlockArrange||0, r.scoreMemory||0, r.scoreReaction||0,
+      r.scoreRuleSwitching||0, r.scorePuzzleGrid||0, r.scoreDirection||0, r.scoreCalcSprint||0,
+      r.skillPatternRecog||0, r.skillMemory||0, r.skillAttention||0, r.skillLogical||0,
+      r.skillSpatial||0, r.skillReaction||0, r.skillNumerical||0, r.skillDecision||0,
+      r.totalCorrect||0, r.totalWrong||0, r.totalMissed||0, r.avgResponseTimeMs||0,
+      r.tabSwitchCount||0, r.autoSubmitted, r.attemptId, r.timestamp
+    ].map(v => `"${(v??'').toString().replace(/"/g,'""')}"`));
+
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url  = URL.createObjectURL(blob);
+    const a    = Object.assign(document.createElement('a'), { href: url, download: 'cogniassess_results.csv' });
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  /* Boot */
+  loadFromLocalStorage();
+</script>
+</body>
+</html>

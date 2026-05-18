@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CogniAssess — Instructions</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div class="page">
+  <div class="card card-wide">
+    <div class="logo">
+      <div class="logo-icon">🧠</div>
+      <span>CogniAssess</span>
+    </div>
+
+    <div id="welcomeMsg" class="mb-2"></div>
+
+    <h1 class="mb-1">Assessment Instructions</h1>
+    <p class="text-muted mb-3">Please read carefully before starting. The timer begins when you click <strong>Start Assessment</strong>.</p>
+
+    <div class="alert alert-warning mb-2">
+      ⏱ <strong>Total Duration: 25 Minutes.</strong> The assessment auto-submits when time is over.
+    </div>
+
+    <ul class="instruction-list mb-3">
+      <li>
+        <div class="icon">🎮</div>
+        <div><strong>Game-Based Tasks</strong> — This is NOT a multiple-choice quiz. You will complete 8 interactive cognitive mini-games that measure different mental abilities.</div>
+      </li>
+      <li>
+        <div class="icon">⏱</div>
+        <div><strong>Timed Assessment</strong> — You have 25 minutes total. Each game also has its own time limit shown on screen.</div>
+      </li>
+      <li>
+        <div class="icon">🖱</div>
+        <div><strong>Interactions</strong> — You will click, drag, arrange blocks, remember sequences, and solve visual puzzles. No typing required for games.</div>
+      </li>
+      <li>
+        <div class="icon">📱</div>
+        <div><strong>Mobile Friendly</strong> — The assessment works on mobile. Drag interactions use touch. Ensure your screen is not auto-rotating.</div>
+      </li>
+      <li>
+        <div class="icon">🔒</div>
+        <div><strong>Tab Switching</strong> — Switching tabs or minimizing the browser will be recorded. Stay on this page throughout the assessment.</div>
+      </li>
+      <li>
+        <div class="icon">💾</div>
+        <div><strong>Progress Saved</strong> — If you accidentally refresh, your progress is saved locally and you can resume if time remains.</div>
+      </li>
+      <li>
+        <div class="icon">🌐</div>
+        <div><strong>Internet Required</strong> — Your results are submitted online at the end. Keep your internet connection active.</div>
+      </li>
+      <li>
+        <div class="icon">🔇</div>
+        <div><strong>Quiet Environment</strong> — Find a calm, distraction-free space. This assessment measures focus and reaction speed.</div>
+      </li>
+    </ul>
+
+    <h3 class="mb-1">8 Mini-Games You Will Play</h3>
+    <div class="game-overview-grid mb-3">
+      <div class="game-overview-item"><span>🔷</span> Pattern Match</div>
+      <div class="game-overview-item"><span>🧩</span> Block Arrangement</div>
+      <div class="game-overview-item"><span>🧠</span> Memory Sequence</div>
+      <div class="game-overview-item"><span>⚡</span> Quick Reaction</div>
+      <div class="game-overview-item"><span>🔀</span> Rule Switching</div>
+      <div class="game-overview-item"><span>◼</span> Puzzle Grid</div>
+      <div class="game-overview-item"><span>🗺</span> Direction Quest</div>
+      <div class="game-overview-item"><span>🔢</span> Calculation Sprint</div>
+    </div>
+
+    <h3 class="mb-1">Scoring</h3>
+    <p class="text-muted mb-3">
+      Scores are based on <strong>accuracy + speed + consistency</strong>. You earn points for correct answers, lose points for repeated mistakes, and get bonus points for fast, accurate responses.
+    </p>
+
+    <div class="alert alert-info mb-3">
+      <strong>Device Check:</strong> Make sure your device volume is not muted, your screen brightness is adequate, and you are on a stable connection before starting.
+    </div>
+
+    <button id="startBtn" class="btn btn-primary btn-full" style="font-size:1.1rem; padding: 1rem;">
+      🚀 Start Assessment
+    </button>
+
+    <p class="text-muted text-center mt-2" style="font-size:.85rem;">
+      By starting, you confirm that you are the registered learner and will complete this assessment independently.
+    </p>
+  </div>
+</div>
+
+<script src="storage.js"></script>
+<script>
+  /* Guard: must have learner info to reach this page */
+  const info = Storage.getLearnerInfo();
+  if (!info) {
+    window.location.href = 'index.html';
+  } else {
+    document.getElementById('welcomeMsg').innerHTML =
+      `<div class="alert alert-success">👋 Hello, <strong>${escapeHtml(info.name)}</strong>! Your Attempt ID is <code>${info.attemptId}</code></div>`;
+  }
+
+  function escapeHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  document.getElementById('startBtn').addEventListener('click', function() {
+    this.disabled = true;
+    this.textContent = 'Loading…';
+    /* Initialize fresh assessment state */
+    Storage.initAssessmentState();
+    window.location.href = 'assessment.html';
+  });
+</script>
+</body>
+</html>
