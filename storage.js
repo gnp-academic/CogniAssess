@@ -90,7 +90,7 @@ const Storage = (() => {
   }
 
   /* ---------- Submit to Google Apps Script ---------------- */
-  const WEB_APP_URL = 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE';
+  const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzbxLaTzEqkEZfDy8Sul3gPaHiMLM4JTGYOZpaG1BAQGjZ4a4EUmKTOuqouAcfBp5_0/exec';
   // Replace the string above with your deployed Apps Script Web App URL.
 
   async function submitResult(payload) {
